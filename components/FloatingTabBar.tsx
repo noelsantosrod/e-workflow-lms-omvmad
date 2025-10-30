@@ -20,6 +20,7 @@ import Animated, {
   interpolate,
 } from 'react-native-reanimated';
 import { colors } from '@/styles/commonStyles';
+import * as Haptics from 'expo-haptics';
 
 export interface TabBarItem {
   name: string;
@@ -58,8 +59,16 @@ export default function FloatingTabBar({
     }
   }, [pathname, tabs]);
 
-  const handleTabPress = (route: string) => {
-    router.push(route as any);
+  const handleTabPress = (route: string, index: number) => {
+    console.log('Tab pressed:', route);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    
+    // Smooth navigation
+    try {
+      router.push(route as any);
+    } catch (error) {
+      console.error('Navigation error:', error);
+    }
   };
 
   const animatedIndicatorStyle = useAnimatedStyle(() => {
@@ -116,7 +125,7 @@ export default function FloatingTabBar({
             <TouchableOpacity
               key={tab.name}
               style={styles.tab}
-              onPress={() => handleTabPress(tab.route)}
+              onPress={() => handleTabPress(tab.route, index)}
               activeOpacity={0.7}
             >
               <IconSymbol

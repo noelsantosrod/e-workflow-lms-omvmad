@@ -1,11 +1,10 @@
 
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, Pressable, useColorScheme, Platform } from 'react-native';
+import React, { useEffect } from 'react';
+import { View, Text, StyleSheet, ScrollView, Pressable, useColorScheme, Platform, ActivityIndicator } from 'react-native';
 import { Stack, useRouter } from 'expo-router';
 import { IconSymbol } from '@/components/IconSymbol';
 import { colors, commonStyles } from '@/styles/commonStyles';
-import { initialWorkflowData } from '@/data/workflowData';
-import { WorkflowData } from '@/types/workflow';
+import { useWorkflow } from '@/contexts/WorkflowContext';
 import ProgressDoughnut from '@/components/ProgressDoughnut';
 import ExportButton from '@/components/ExportButton';
 import * as Haptics from 'expo-haptics';
@@ -14,12 +13,20 @@ export default function DashboardScreen() {
   const colorScheme = useColorScheme();
   const router = useRouter();
   const isDark = colorScheme === 'dark';
-  const [workflowData, setWorkflowData] = useState<WorkflowData>(initialWorkflowData);
+  const { workflowData, isLoading, saveData } = useWorkflow();
 
   const bgColor = isDark ? '#1C1C1E' : colors.background;
   const cardColor = isDark ? '#2C2C2E' : colors.card;
   const textColor = isDark ? '#FFFFFF' : colors.text;
   const textSecondaryColor = isDark ? '#98989D' : colors.textSecondary;
+
+  // Save data when leaving the screen
+  useEffect(() => {
+    return () => {
+      console.log('Dashboard unmounting, saving data...');
+      saveData();
+    };
+  }, []);
 
   // Calculate overall progress
   const calculateProgress = () => {
@@ -47,15 +54,25 @@ export default function DashboardScreen() {
 
   const handlePhasePress = (phaseRoute: string) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    console.log('Navigating to:', phaseRoute);
     router.push(phaseRoute as any);
   };
+
+  if (isLoading) {
+    return (
+      <View style={[styles.container, { backgroundColor: bgColor, justifyContent: 'center', alignItems: 'center' }]}>
+        <ActivityIndicator size="large" color={colors.primary} />
+        <Text style={[styles.loadingText, { color: textColor }]}>Cargando datos...</Text>
+      </View>
+    );
+  }
 
   return (
     <>
       <Stack.Screen
         options={{
           title: 'Dashboard Global',
-          headerRight: () => <ExportButton workflowData={workflowData} />,
+          headerRight: () => <ExportButton />,
         }}
       />
       <View style={[styles.container, { backgroundColor: bgColor }]}>
@@ -179,6 +196,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 20,
     paddingBottom: Platform.OS === 'ios' ? 20 : 100,
+  },
+  loadingText: {
+    marginTop: 16,
+    fontSize: 16,
   },
   header: {
     marginBottom: 24,

@@ -1,14 +1,20 @@
 
-import React, { useState } from 'react';
+import React, { useEffect } from 'react';
 import { Stack } from 'expo-router';
-import { initialWorkflowData } from '@/data/workflowData';
-import { WorkflowData } from '@/types/workflow';
+import { useWorkflow } from '@/contexts/WorkflowContext';
 import PhaseScreen from '@/components/PhaseScreen';
 
 export default function ProductionScreen() {
-  const [workflowData, setWorkflowData] = useState<WorkflowData>(initialWorkflowData);
-
+  const { workflowData, saveData } = useWorkflow();
   const phase = workflowData.phases[1]; // Production phase
+
+  // Save data when leaving the screen
+  useEffect(() => {
+    return () => {
+      console.log('Production screen unmounting, saving data...');
+      saveData();
+    };
+  }, []);
 
   return (
     <>
@@ -17,11 +23,7 @@ export default function ProductionScreen() {
           title: 'Producción',
         }}
       />
-      <PhaseScreen
-        phase={phase}
-        workflowData={workflowData}
-        setWorkflowData={setWorkflowData}
-      />
+      <PhaseScreen phase={phase} />
     </>
   );
 }

@@ -1,29 +1,38 @@
 
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, Pressable, useColorScheme, Platform, Alert } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, ScrollView, Pressable, useColorScheme, Platform, Alert, TextInput } from 'react-native';
 import { IconSymbol } from '@/components/IconSymbol';
 import { colors } from '@/styles/commonStyles';
-import { Phase, WorkflowData } from '@/types/workflow';
+import { Phase } from '@/types/workflow';
+import { useWorkflow } from '@/contexts/WorkflowContext';
 import ChecklistComponent from '@/components/ChecklistComponent';
 import ResourceList from '@/components/ResourceList';
 import ViewSwitcher from '@/components/ViewSwitcher';
 import * as Haptics from 'expo-haptics';
+import * as DocumentPicker from 'expo-document-picker';
 
 interface PhaseScreenProps {
   phase: Phase;
-  workflowData: WorkflowData;
-  setWorkflowData: (data: WorkflowData) => void;
 }
 
-export default function PhaseScreen({ phase, workflowData, setWorkflowData }: PhaseScreenProps) {
+export default function PhaseScreen({ phase }: PhaseScreenProps) {
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
+  const { workflowData, setWorkflowData, saveData } = useWorkflow();
   const [currentView, setCurrentView] = useState<'checklist' | 'kanban' | 'timeline'>('checklist');
 
   const bgColor = isDark ? '#1C1C1E' : colors.background;
   const cardColor = isDark ? '#2C2C2E' : colors.card;
   const textColor = isDark ? '#FFFFFF' : colors.text;
   const textSecondaryColor = isDark ? '#98989D' : colors.textSecondary;
+
+  // Save data when leaving the screen
+  useEffect(() => {
+    return () => {
+      console.log('PhaseScreen unmounting, saving data...');
+      saveData();
+    };
+  }, []);
 
   const handleToggleTask = (taskId: string) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -43,57 +52,131 @@ export default function PhaseScreen({ phase, workflowData, setWorkflowData }: Ph
     setWorkflowData({ ...workflowData, phases: updatedPhases });
   };
 
-  const handleAddResource = (type: 'url' | 'file' | 'note') => {
+  const handleAddResource = async (type: 'url' | 'file' | 'note') => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    Alert.prompt(
-      'Añadir Recurso',
-      `Ingresa el ${type === 'url' ? 'URL' : type === 'file' ? 'nombre del archivo' : 'nota'}:`,
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Añadir',
-          onPress: (value) => {
-            if (value && value.trim()) {
-              const newResource = {
-                id: Date.now().toString(),
-                title: value.trim(),
-                type,
-                content: value.trim(),
+
+    if (type === 'file') {
+      // Use document picker for files
+      try {
+        const result = await DocumentPicker.getDocumentAsync({
+          type: '*/*',
+          copyToCacheDirectory: true,
+        });
+
+        if (!result.canceled && result.assets && result.assets.length > 0) {
+          const file = result.assets[0];
+          const newResource = {
+            id: Date.now().toString(),
+            title: file.name,
+            type: 'file' as const,
+            content: file.uri,
+          };
+
+          const updatedPhases = workflowData.phases.map(p => {
+            if (p.id === phase.id) {
+              return {
+                ...p,
+                resources: [...p.resources, newResource],
               };
-
-              const updatedPhases = workflowData.phases.map(p => {
-                if (p.id === phase.id) {
-                  return {
-                    ...p,
-                    resources: [...p.resources, newResource],
-                  };
-                }
-                return p;
-              });
-
-              setWorkflowData({ ...workflowData, phases: updatedPhases });
             }
-          },
-        },
-      ],
-      'plain-text'
-    );
+            return p;
+          });
+
+          setWorkflowData({ ...workflowData, phases: updatedPhases });
+          Alert.alert('Éxito', 'Archivo añadido correctamente');
+        }
+      } catch (error) {
+        console.error('Error picking document:', error);
+        Alert.alert('Error', 'No se pudo seleccionar el archivo');
+      }
+    } else {
+      // For URL and note, show a custom dialog
+      showInputDialog(type);
+    }
   };
 
-  const handleDeleteResource = (resourceId: string) => {
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+  const showInputDialog = (type: 'url' | 'note') => {
+    const title = type === 'url' ? 'Añadir URL' : 'Añadir Nota';
+    const placeholder = type === 'url' ? 'https://ejemplo.com' : 'Escribe tu nota aquí...';
     
+    if (Platform.OS === 'web') {
+      // For web, use native prompt
+      const value = prompt(title, '');
+      if (value && value.trim()) {
+        addResourceToPhase(type, value.trim());
+      }
+    } else {
+      // For mobile, use Alert with input
+      Alert.prompt(
+        title,
+        `Ingresa ${type === 'url' ? 'la URL' : 'la nota'}:`,
+        [
+          { text: 'Cancelar', style: 'cancel' },
+          {
+            text: 'Añadir',
+            onPress: (value) => {
+              if (value && value.trim()) {
+                addResourceToPhase(type, value.trim());
+              }
+            },
+          },
+        ],
+        'plain-text',
+        '',
+        'default'
+      );
+    }
+  };
+
+  const addResourceToPhase = (type: 'url' | 'note', content: string) => {
+    const newResource = {
+      id: Date.now().toString(),
+      title: type === 'url' ? content : content.substring(0, 50) + (content.length > 50 ? '...' : ''),
+      type,
+      content,
+    };
+
     const updatedPhases = workflowData.phases.map(p => {
       if (p.id === phase.id) {
         return {
           ...p,
-          resources: p.resources.filter(r => r.id !== resourceId),
+          resources: [...p.resources, newResource],
         };
       }
       return p;
     });
 
     setWorkflowData({ ...workflowData, phases: updatedPhases });
+    Alert.alert('Éxito', 'Recurso añadido correctamente');
+  };
+
+  const handleDeleteResource = (resourceId: string) => {
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+    
+    Alert.alert(
+      'Eliminar Recurso',
+      '¿Estás seguro de que quieres eliminar este recurso?',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Eliminar',
+          style: 'destructive',
+          onPress: () => {
+            const updatedPhases = workflowData.phases.map(p => {
+              if (p.id === phase.id) {
+                return {
+                  ...p,
+                  resources: p.resources.filter(r => r.id !== resourceId),
+                };
+              }
+              return p;
+            });
+
+            setWorkflowData({ ...workflowData, phases: updatedPhases });
+          },
+        },
+      ]
+    );
   };
 
   const calculateProgress = () => {

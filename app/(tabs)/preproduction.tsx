@@ -1,18 +1,20 @@
 
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, useColorScheme, Platform } from 'react-native';
+import React, { useEffect } from 'react';
 import { Stack } from 'expo-router';
-import { colors } from '@/styles/commonStyles';
-import { initialWorkflowData } from '@/data/workflowData';
-import { WorkflowData } from '@/types/workflow';
+import { useWorkflow } from '@/contexts/WorkflowContext';
 import PhaseScreen from '@/components/PhaseScreen';
 
 export default function PreProductionScreen() {
-  const colorScheme = useColorScheme();
-  const isDark = colorScheme === 'dark';
-  const [workflowData, setWorkflowData] = useState<WorkflowData>(initialWorkflowData);
-
+  const { workflowData, saveData } = useWorkflow();
   const phase = workflowData.phases[0]; // Pre-production phase
+
+  // Save data when leaving the screen
+  useEffect(() => {
+    return () => {
+      console.log('Pre-production screen unmounting, saving data...');
+      saveData();
+    };
+  }, []);
 
   return (
     <>
@@ -21,11 +23,7 @@ export default function PreProductionScreen() {
           title: 'Pre-producción',
         }}
       />
-      <PhaseScreen
-        phase={phase}
-        workflowData={workflowData}
-        setWorkflowData={setWorkflowData}
-      />
+      <PhaseScreen phase={phase} />
     </>
   );
 }
