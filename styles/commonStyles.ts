@@ -2,6 +2,7 @@
 import { StyleSheet, ViewStyle, TextStyle } from 'react-native';
 
 export const colors = {
+  // Light mode colors
   background: '#F7F6F3',
   text: '#333333',
   textSecondary: '#767676',
@@ -13,6 +14,14 @@ export const colors = {
   border: '#E0E0E0',
   danger: '#DC3545',
   warning: '#FFC107',
+  
+  // Dark mode colors
+  darkBackground: '#1C1C1E',
+  darkText: '#FFFFFF',
+  darkTextSecondary: '#98989D',
+  darkCard: '#2C2C2E',
+  darkHighlight: '#3A3A3C',
+  darkBorder: '#48484A',
 };
 
 export const buttonStyles = StyleSheet.create({

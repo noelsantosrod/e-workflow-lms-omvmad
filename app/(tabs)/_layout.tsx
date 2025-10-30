@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Platform } from 'react-native';
 import { NativeTabs, Icon, Label } from 'expo-router/unstable-native-tabs';
@@ -11,13 +12,31 @@ export default function TabLayout() {
       name: '(home)',
       route: '/(tabs)/(home)/',
       icon: 'house.fill',
-      label: 'Home',
+      label: 'Dashboard',
+    },
+    {
+      name: 'preproduction',
+      route: '/(tabs)/preproduction',
+      icon: 'doc.text.fill',
+      label: 'Pre-prod',
+    },
+    {
+      name: 'production',
+      route: '/(tabs)/production',
+      icon: 'hammer.fill',
+      label: 'Producción',
+    },
+    {
+      name: 'postproduction',
+      route: '/(tabs)/postproduction',
+      icon: 'checkmark.seal.fill',
+      label: 'Post-prod',
     },
     {
       name: 'profile',
       route: '/(tabs)/profile',
-      icon: 'person.fill',
-      label: 'Profile',
+      icon: 'book.fill',
+      label: 'Recursos',
     },
   ];
 
@@ -27,11 +46,23 @@ export default function TabLayout() {
       <NativeTabs>
         <NativeTabs.Trigger name="(home)">
           <Icon sf="house.fill" drawable="ic_home" />
-          <Label>Home</Label>
+          <Label>Dashboard</Label>
+        </NativeTabs.Trigger>
+        <NativeTabs.Trigger name="preproduction">
+          <Icon sf="doc.text.fill" drawable="ic_doc" />
+          <Label>Pre-prod</Label>
+        </NativeTabs.Trigger>
+        <NativeTabs.Trigger name="production">
+          <Icon sf="hammer.fill" drawable="ic_hammer" />
+          <Label>Producción</Label>
+        </NativeTabs.Trigger>
+        <NativeTabs.Trigger name="postproduction">
+          <Icon sf="checkmark.seal.fill" drawable="ic_check" />
+          <Label>Post-prod</Label>
         </NativeTabs.Trigger>
         <NativeTabs.Trigger name="profile">
-          <Icon sf="person.fill" drawable="ic_profile" />
-          <Label>Profile</Label>
+          <Icon sf="book.fill" drawable="ic_book" />
+          <Label>Recursos</Label>
         </NativeTabs.Trigger>
       </NativeTabs>
     );
@@ -43,10 +74,13 @@ export default function TabLayout() {
       <Stack
         screenOptions={{
           headerShown: false,
-          animation: 'none', // Remove fade animation to prevent black screen flash
+          animation: 'none',
         }}
       >
         <Stack.Screen name="(home)" />
+        <Stack.Screen name="preproduction" />
+        <Stack.Screen name="production" />
+        <Stack.Screen name="postproduction" />
         <Stack.Screen name="profile" />
       </Stack>
       <FloatingTabBar tabs={tabs} />

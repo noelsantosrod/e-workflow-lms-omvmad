@@ -1,104 +1,168 @@
-import React from "react";
-import { Stack, Link } from "expo-router";
-import { FlatList, Pressable, StyleSheet, View, Text, Alert, Platform } from "react-native";
-import { IconSymbol } from "@/components/IconSymbol";
-import { GlassView } from "expo-glass-effect";
-import { useTheme } from "@react-navigation/native";
 
-const ICON_COLOR = "#007AFF";
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, ScrollView, Pressable, useColorScheme, Platform } from 'react-native';
+import { Stack, useRouter } from 'expo-router';
+import { IconSymbol } from '@/components/IconSymbol';
+import { colors, commonStyles } from '@/styles/commonStyles';
+import { initialWorkflowData } from '@/data/workflowData';
+import { WorkflowData } from '@/types/workflow';
+import ProgressDoughnut from '@/components/ProgressDoughnut';
+import ExportButton from '@/components/ExportButton';
+import * as Haptics from 'expo-haptics';
 
-export default function HomeScreen() {
-  const theme = useTheme();
-  const modalDemos = [
-    {
-      title: "Standard Modal",
-      description: "Full screen modal presentation",
-      route: "/modal",
-      color: "#007AFF",
-    },
-    {
-      title: "Form Sheet",
-      description: "Bottom sheet with detents and grabber",
-      route: "/formsheet",
-      color: "#34C759",
-    },
-    {
-      title: "Transparent Modal",
-      description: "Overlay without obscuring background",
-      route: "/transparent-modal",
-      color: "#FF9500",
-    }
-  ];
+export default function DashboardScreen() {
+  const colorScheme = useColorScheme();
+  const router = useRouter();
+  const isDark = colorScheme === 'dark';
+  const [workflowData, setWorkflowData] = useState<WorkflowData>(initialWorkflowData);
 
-  const renderModalDemo = ({ item }: { item: (typeof modalDemos)[0] }) => (
-    <GlassView style={[
-      styles.demoCard,
-      Platform.OS !== 'ios' && { backgroundColor: theme.dark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)' }
-    ]} glassEffectStyle="regular">
-      <View style={[styles.demoIcon, { backgroundColor: item.color }]}>
-        <IconSymbol name="square.grid.3x3" color="white" size={24} />
-      </View>
-      <View style={styles.demoContent}>
-        <Text style={[styles.demoTitle, { color: theme.colors.text }]}>{item.title}</Text>
-        <Text style={[styles.demoDescription, { color: theme.dark ? '#98989D' : '#666' }]}>{item.description}</Text>
-      </View>
-      <Link href={item.route as any} asChild>
-        <Pressable>
-          <GlassView style={[
-            styles.tryButton,
-            Platform.OS !== 'ios' && { backgroundColor: theme.dark ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.08)' }
-          ]} glassEffectStyle="clear">
-            <Text style={[styles.tryButtonText, { color: theme.colors.primary }]}>Try It</Text>
-          </GlassView>
-        </Pressable>
-      </Link>
-    </GlassView>
-  );
+  const bgColor = isDark ? '#1C1C1E' : colors.background;
+  const cardColor = isDark ? '#2C2C2E' : colors.card;
+  const textColor = isDark ? '#FFFFFF' : colors.text;
+  const textSecondaryColor = isDark ? '#98989D' : colors.textSecondary;
 
-  const renderHeaderRight = () => (
-    <Pressable
-      onPress={() => Alert.alert("Not Implemented", "This feature is not implemented yet")}
-      style={styles.headerButtonContainer}
-    >
-      <IconSymbol name="plus" color={theme.colors.primary} />
-    </Pressable>
-  );
+  // Calculate overall progress
+  const calculateProgress = () => {
+    let totalTasks = 0;
+    let completedTasks = 0;
 
-  const renderHeaderLeft = () => (
-    <Pressable
-      onPress={() => Alert.alert("Not Implemented", "This feature is not implemented yet")}
-      style={styles.headerButtonContainer}
-    >
-      <IconSymbol
-        name="gear"
-        color={theme.colors.primary}
-      />
-    </Pressable>
-  );
+    workflowData.phases.forEach(phase => {
+      totalTasks += phase.checklist.length;
+      completedTasks += phase.checklist.filter(item => item.completed).length;
+    });
+
+    return totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+  };
+
+  const calculatePhaseProgress = (phaseId: string) => {
+    const phase = workflowData.phases.find(p => p.id === phaseId);
+    if (!phase) return 0;
+
+    const total = phase.checklist.length;
+    const completed = phase.checklist.filter(item => item.completed).length;
+    return total > 0 ? Math.round((completed / total) * 100) : 0;
+  };
+
+  const overallProgress = calculateProgress();
+
+  const handlePhasePress = (phaseRoute: string) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    router.push(phaseRoute as any);
+  };
 
   return (
     <>
-      {Platform.OS === 'ios' && (
-        <Stack.Screen
-          options={{
-            title: "Building the app...",
-            headerRight: renderHeaderRight,
-            headerLeft: renderHeaderLeft,
-          }}
-        />
-      )}
-      <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
-        <FlatList
-          data={modalDemos}
-          renderItem={renderModalDemo}
-          keyExtractor={(item) => item.route}
-          contentContainerStyle={[
-            styles.listContainer,
-            Platform.OS !== 'ios' && styles.listContainerWithTabBar
-          ]}
-          contentInsetAdjustmentBehavior="automatic"
+      <Stack.Screen
+        options={{
+          title: 'Dashboard Global',
+          headerRight: () => <ExportButton workflowData={workflowData} />,
+        }}
+      />
+      <View style={[styles.container, { backgroundColor: bgColor }]}>
+        <ScrollView
+          style={styles.scrollView}
+          contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
-        />
+        >
+          {/* Header Section */}
+          <View style={styles.header}>
+            <Text style={[styles.title, { color: textColor }]}>
+              Sistema de Flujo E-Learning
+            </Text>
+            <Text style={[styles.subtitle, { color: textSecondaryColor }]}>
+              Organiza y rastrea tu proceso de creación de cursos
+            </Text>
+          </View>
+
+          {/* Overall Progress Card */}
+          <View style={[styles.progressCard, { backgroundColor: cardColor }]}>
+            <Text style={[styles.cardTitle, { color: textColor }]}>
+              Progreso Global del Proyecto
+            </Text>
+            <View style={styles.progressContainer}>
+              <ProgressDoughnut progress={overallProgress} size={140} />
+              <View style={styles.progressStats}>
+                <View style={styles.statItem}>
+                  <Text style={[styles.statValue, { color: textColor }]}>
+                    {workflowData.phases.reduce((acc, p) => acc + p.checklist.filter(i => i.completed).length, 0)}
+                  </Text>
+                  <Text style={[styles.statLabel, { color: textSecondaryColor }]}>
+                    Completadas
+                  </Text>
+                </View>
+                <View style={styles.statItem}>
+                  <Text style={[styles.statValue, { color: textColor }]}>
+                    {workflowData.phases.reduce((acc, p) => acc + p.checklist.length, 0)}
+                  </Text>
+                  <Text style={[styles.statLabel, { color: textSecondaryColor }]}>
+                    Total Tareas
+                  </Text>
+                </View>
+              </View>
+            </View>
+          </View>
+
+          {/* Phase Cards */}
+          <Text style={[styles.sectionTitle, { color: textColor }]}>
+            Fases del Proyecto
+          </Text>
+
+          {workflowData.phases.map((phase, index) => {
+            const phaseProgress = calculatePhaseProgress(phase.id);
+            const routes = ['/(tabs)/preproduction', '/(tabs)/production', '/(tabs)/postproduction'];
+            
+            return (
+              <Pressable
+                key={phase.id}
+                style={[styles.phaseCard, { backgroundColor: cardColor }]}
+                onPress={() => handlePhasePress(routes[index])}
+              >
+                <View style={[styles.phaseIconContainer, { backgroundColor: phase.color + '20' }]}>
+                  <IconSymbol name={phase.icon as any} size={28} color={phase.color} />
+                </View>
+                <View style={styles.phaseContent}>
+                  <Text style={[styles.phaseTitle, { color: textColor }]}>
+                    {phase.name}
+                  </Text>
+                  <Text style={[styles.phaseDescription, { color: textSecondaryColor }]}>
+                    {phase.description}
+                  </Text>
+                  <View style={styles.phaseProgressBar}>
+                    <View
+                      style={[
+                        styles.phaseProgressFill,
+                        { backgroundColor: phase.color, width: `${phaseProgress}%` }
+                      ]}
+                    />
+                  </View>
+                  <Text style={[styles.phaseProgressText, { color: textSecondaryColor }]}>
+                    {phaseProgress}% completado
+                  </Text>
+                </View>
+                <IconSymbol name="chevron.right" size={20} color={textSecondaryColor} />
+              </Pressable>
+            );
+          })}
+
+          {/* Quick Tips Card */}
+          <View style={[styles.tipsCard, { backgroundColor: cardColor }]}>
+            <View style={styles.tipsHeader}>
+              <IconSymbol name="lightbulb.fill" size={24} color="#FFC107" />
+              <Text style={[styles.tipsTitle, { color: textColor }]}>
+                Consejos de Productividad
+              </Text>
+            </View>
+            <Text style={[styles.tipText, { color: textSecondaryColor }]}>
+              - Revisa tu progreso diariamente para mantener el enfoque
+            </Text>
+            <Text style={[styles.tipText, { color: textSecondaryColor }]}>
+              - Completa las tareas de pre-producción antes de comenzar en Storyline
+            </Text>
+            <Text style={[styles.tipText, { color: textSecondaryColor }]}>
+              - Exporta tus datos regularmente para mantener un respaldo
+            </Text>
+          </View>
+        </ScrollView>
       </View>
     </>
   );
@@ -107,55 +171,126 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    // backgroundColor handled dynamically
   },
-  listContainer: {
-    paddingVertical: 16,
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
     paddingHorizontal: 16,
+    paddingVertical: 20,
+    paddingBottom: Platform.OS === 'ios' ? 20 : 100,
   },
-  listContainerWithTabBar: {
-    paddingBottom: 100, // Extra padding for floating tab bar
+  header: {
+    marginBottom: 24,
   },
-  demoCard: {
+  title: {
+    fontSize: 28,
+    fontWeight: '700',
+    marginBottom: 8,
+  },
+  subtitle: {
+    fontSize: 16,
+    lineHeight: 22,
+  },
+  progressCard: {
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 24,
+    boxShadow: '0px 2px 12px rgba(0, 0, 0, 0.08)',
+    elevation: 3,
+  },
+  cardTitle: {
+    fontSize: 20,
+    fontWeight: '600',
+    marginBottom: 20,
+  },
+  progressContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-around',
+  },
+  progressStats: {
+    gap: 20,
+  },
+  statItem: {
+    alignItems: 'center',
+  },
+  statValue: {
+    fontSize: 32,
+    fontWeight: '700',
+  },
+  statLabel: {
+    fontSize: 14,
+    marginTop: 4,
+  },
+  sectionTitle: {
+    fontSize: 22,
+    fontWeight: '600',
+    marginBottom: 16,
+  },
+  phaseCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
     borderRadius: 12,
     padding: 16,
     marginBottom: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
+    boxShadow: '0px 2px 8px rgba(0, 0, 0, 0.06)',
+    elevation: 2,
   },
-  demoIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+  phaseIconContainer: {
+    width: 56,
+    height: 56,
+    borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 16,
   },
-  demoContent: {
+  phaseContent: {
     flex: 1,
   },
-  demoTitle: {
+  phaseTitle: {
     fontSize: 18,
     fontWeight: '600',
     marginBottom: 4,
-    // color handled dynamically
   },
-  demoDescription: {
+  phaseDescription: {
     fontSize: 14,
-    lineHeight: 18,
-    // color handled dynamically
+    marginBottom: 8,
   },
-  headerButtonContainer: {
-    padding: 6,
+  phaseProgressBar: {
+    height: 6,
+    backgroundColor: '#E0E0E0',
+    borderRadius: 3,
+    overflow: 'hidden',
+    marginBottom: 6,
   },
-  tryButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 6,
+  phaseProgressFill: {
+    height: '100%',
+    borderRadius: 3,
   },
-  tryButtonText: {
-    fontSize: 14,
+  phaseProgressText: {
+    fontSize: 12,
+  },
+  tipsCard: {
+    borderRadius: 12,
+    padding: 16,
+    marginTop: 12,
+    boxShadow: '0px 2px 8px rgba(0, 0, 0, 0.06)',
+    elevation: 2,
+  },
+  tipsHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  tipsTitle: {
+    fontSize: 18,
     fontWeight: '600',
-    // color handled dynamically
+    marginLeft: 8,
+  },
+  tipText: {
+    fontSize: 14,
+    lineHeight: 20,
+    marginBottom: 6,
   },
 });
